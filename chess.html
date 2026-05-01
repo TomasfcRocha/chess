@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Chess vs Bot</title>
+    <!-- Option A: The Security Fix -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; img-src 'self' https://chessboardjs.com data:;">
-    <title>Simple JS Chess Bot</title>
-    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; color: white; padding: 20px; }
-        #myBoard { width: 400px; max-width: 90vw; }
-        .info { margin: 20px; text-align: center; }
-        button { padding: 10px 20px; cursor: pointer; background: #e74c3c; color: white; border: none; border-radius: 5px; }
+        body { background: #313131; color: white; font-family: sans-serif; text-align: center; }
+        #board { width: 400px; margin: 20px auto; }
     </style>
 </head>
 <body>
