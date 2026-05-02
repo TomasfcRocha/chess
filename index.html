@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess - Clickable History</title>
+    <title>Chess - Flip, Drag, and Jump</title>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
         body {
@@ -50,12 +50,22 @@
         .nav-buttons {
             display: flex;
             gap: 5px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .nav-buttons button {
             flex: 1;
             background: #3498db;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .action-buttons button {
+            flex: 1;
         }
 
         .input-group {
@@ -103,24 +113,12 @@
             border-bottom: 1px solid #34495e;
             display: flex;
             cursor: pointer;
-            transition: background 0.2s;
         }
 
-        .move-row:hover {
-            background: #465c71;
-        }
-
+        .move-row:hover { background: #465c71; }
         .move-number { color: #95a5a6; width: 30px; }
-        .white-move, .black-move { 
-            width: 80px; 
-            padding: 0 5px;
-            border-radius: 3px;
-        }
-        
-        .white-move:hover, .black-move:hover {
-            background: #f1c40f;
-            color: #2c3e50;
-        }
+        .white-move, .black-move { width: 80px; padding: 0 5px; border-radius: 3px; }
+        .white-move:hover, .black-move:hover { background: #f1c40f; color: #2c3e50; }
 
         button {
             padding: 10px; 
@@ -134,6 +132,8 @@
         button:hover { background: #d35400; }
         button:disabled { background: #7f8c8d; cursor: not-allowed; }
         .btn-move { background: #27ae60; }
+        .btn-flip { background: #9b59b6; }
+        .btn-flip:hover { background: #8e44ad; }
     </style>
 </head>
 <body>
@@ -152,13 +152,17 @@
             <button id="nextBtn" onclick="redoMove()">Next ▶</button>
         </div>
 
+        <div class="action-buttons">
+            <button class="btn-flip" onclick="flipBoard()">🔄 Flip Board</button>
+        </div>
+
         <div class="input-group">
             <input type="text" id="moveInput" placeholder="Type move (e.g. e4)">
             <button class="btn-move" onclick="handleInputMove()">Move</button>
         </div>
 
         <div class="history-box">
-            <h3 style="margin-top:0; font-size:1rem;">Move History (Click to jump)</h3>
+            <h3 style="margin-top:0; font-size:0.9rem;">History (Click to jump)</h3>
             <div id="moveHistory"></div>
         </div>
         
@@ -183,22 +187,17 @@
         return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
     }
 
-    // Jump to a specific point in the history
+    function flipBoard() {
+        board.orientation('flip'); // Core Chessboard.js flip function
+    }
+
     function jumpToMove(index) {
         var history = game.history();
         var targetCount = index + 1;
-        var currentCount = history.length;
-
-        if (targetCount < currentCount) {
-            // Need to go back
-            while (game.history().length > targetCount) {
-                undoMove();
-            }
-        } else if (targetCount > currentCount) {
-            // Need to go forward
-            while (game.history().length < targetCount && redoStack.length > 0) {
-                redoMove();
-            }
+        if (targetCount < history.length) {
+            while (game.history().length > targetCount) undoMove();
+        } else {
+            while (game.history().length < targetCount && redoStack.length > 0) redoMove();
         }
     }
 
@@ -223,29 +222,23 @@
     function handleInputMove() {
         var moveStr = $input.val();
         var move = game.move(moveStr);
-
         if (move === null) {
             alert("Invalid move: " + moveStr);
             $input.val('');
             return;
         }
-
         redoStack = []; 
         board.position(game.fen());
         $input.val('');
         updateStatus();
     }
 
-    $input.on('keypress', function(e) {
-        if (e.which === 13) handleInputMove();
-    });
+    $input.on('keypress', function(e) { if (e.which === 13) handleInputMove(); });
 
-    function onDragStart (source, piece, position, orientation) {
+    function onDragStart (source, piece) {
         if (game.game_over()) return false;
         if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-            (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-            return false;
-        }
+            (game.turn() === 'b' && piece.search(/^w/) !== -1)) return false;
     }
 
     function onDrop (source, target) {
@@ -255,19 +248,15 @@
         updateStatus();
     }
 
-    function onSnapEnd () {
-        board.position(game.fen());
-    }
+    function onSnapEnd () { board.position(game.fen()); }
 
     function updateStatus () {
         var status = '';
         var moveColor = (game.turn() === 'w') ? 'White' : 'Black';
 
-        if (game.in_checkmate()) {
-            status = 'Game over, ' + moveColor + ' is in checkmate.';
-        } else if (game.in_draw()) {
-            status = 'Game over, draw';
-        } else {
+        if (game.in_checkmate()) status = 'Game over, ' + moveColor + ' is in checkmate.';
+        else if (game.in_draw()) status = 'Game over, draw';
+        else {
             status = moveColor + ' to move';
             if (game.in_check()) status += ', ' + moveColor + ' is in check';
         }
@@ -276,22 +265,18 @@
         $('#prevBtn').prop('disabled', game.history().length === 0);
         $('#nextBtn').prop('disabled', redoStack.length === 0);
 
-        // Combined history (current + redoable future)
         var currentHistory = game.history();
         var fullHistory = currentHistory.concat([...redoStack].reverse());
-        
         var historyHtml = '';
         for (var i = 0; i < fullHistory.length; i += 2) {
             var moveNum = Math.floor(i / 2) + 1;
-            
-            // Highlight the moves if they are "active" (already played)
-            var whiteClass = i < currentHistory.length ? 'white-move active' : 'white-move';
-            var blackClass = (i + 1) < currentHistory.length ? 'black-move active' : 'black-move';
+            var whiteActive = i < currentHistory.length ? 'active' : '';
+            var blackActive = (i + 1) < currentHistory.length ? 'active' : '';
             
             historyHtml += '<div class="move-row">' +
                            '<span class="move-number">' + moveNum + '.</span>' +
-                           '<span class="' + whiteClass + '" onclick="jumpToMove(' + i + ')">' + fullHistory[i] + '</span>' +
-                           (fullHistory[i+1] ? '<span class="' + blackClass + '" onclick="jumpToMove(' + (i + 1) + ')">' + fullHistory[i+1] + '</span>' : '') +
+                           '<span class="white-move ' + whiteActive + '" onclick="jumpToMove(' + i + ')">' + fullHistory[i] + '</span>' +
+                           (fullHistory[i+1] ? '<span class="black-move ' + blackActive + '" onclick="jumpToMove(' + (i + 1) + ')">' + fullHistory[i+1] + '</span>' : '') +
                            '</div>';
         }
         $history.html(historyHtml);
