@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess - Drag or Type</title>
+    <title>Chess - Drag or Click History</title>
     <!-- Chessboard.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
@@ -60,6 +60,7 @@
             border-radius: 4px;
             border: none;
             outline: none;
+            background: #ecf0f1;
         }
 
         .status-box {
@@ -95,7 +96,20 @@
         }
 
         .move-number { color: #95a5a6; width: 30px; }
-        .white-move, .black-move { width: 80px; }
+        
+        /* Interactive move styling[cite: 1] */
+        .white-move, .black-move { 
+            width: 80px; 
+            cursor: pointer; 
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .white-move:hover, .black-move:hover {
+            background-color: #445a70;
+            color: #f1c40f;
+        }
 
         button {
             padding: 10px; 
@@ -128,7 +142,7 @@
         </div>
 
         <div class="history-box">
-            <h3 style="margin-top:0; font-size:1rem;">Move History</h3>
+            <h3 style="margin-top:0; font-size:1rem;">Move History (Click to Jump)</h3>
             <div id="moveHistory"></div>
         </div>
         
@@ -151,7 +165,6 @@
         return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
     }
 
-    // Function to handle typed moves
     function handleInputMove() {
         var moveStr = $input.val();
         var move = game.move(moveStr);
@@ -167,7 +180,6 @@
         updateStatus();
     }
 
-    // Allow pressing "Enter" key to submit move
     $input.on('keypress', function(e) {
         if (e.which === 13) handleInputMove();
     });
@@ -190,6 +202,17 @@
         board.position(game.fen());
     }
 
+    // NEW: Jump to a specific move in history[cite: 1]
+    function goToMove(moveIndex) {
+        var history = game.history();
+        game.reset();
+        for (var i = 0; i <= moveIndex; i++) {
+            game.move(history[i]);
+        }
+        board.position(game.fen());
+        updateStatus();
+    }
+
     function updateStatus () {
         var status = '';
         var moveColor = (game.turn() === 'w') ? 'White' : 'Black';
@@ -209,10 +232,18 @@
         var historyHtml = '';
         for (var i = 0; i < history.length; i += 2) {
             var moveNum = Math.floor(i / 2) + 1;
+            
+            // Generate clickable spans for history jumping[cite: 1]
+            var whiteMove = '<span class="white-move" onclick="goToMove(' + i + ')">' + history[i] + '</span>';
+            var blackMove = '';
+            if (history[i + 1]) {
+                blackMove = '<span class="black-move" onclick="goToMove(' + (i + 1) + ')">' + history[i + 1] + '</span>';
+            }
+
             historyHtml += '<div class="move-row">' +
                            '<span class="move-number">' + moveNum + '.</span>' +
-                           '<span class="white-move">' + history[i] + '</span>' +
-                           '<span class="black-move">' + (history[i + 1] || '') + '</span>' +
+                           whiteMove +
+                           blackMove +
                            '</div>';
         }
         $history.html(historyHtml);
