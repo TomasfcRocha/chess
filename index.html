@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess - Drag or Type</title>
+    <title>Chess - Full Navigation</title>
     <!-- Chessboard.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
@@ -48,6 +48,17 @@
             flex-direction: column;
         }
 
+        .nav-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .nav-buttons button {
+            flex: 1;
+            background: #3498db;
+        }
+
         .input-group {
             display: flex;
             gap: 5px;
@@ -77,7 +88,7 @@
             padding: 15px;
             border-radius: 8px;
             flex-grow: 1;
-            height: 250px;
+            height: 200px;
             display: flex;
             flex-direction: column;
         }
@@ -107,6 +118,7 @@
             font-weight: bold;
         }
         button:hover { background: #d35400; }
+        button:disabled { background: #7f8c8d; cursor: not-allowed; }
         .btn-move { background: #27ae60; }
         .btn-move:hover { background: #2ecc71; }
     </style>
@@ -122,8 +134,13 @@
     <div class="info-section">
         <div class="status-box" id="status">White to move</div>
         
+        <div class="nav-buttons">
+            <button id="prevBtn" onclick="undoMove()">◀ Back</button>
+            <button id="nextBtn" onclick="redoMove()">Next ▶</button>
+        </div>
+
         <div class="input-group">
-            <input type="text" id="moveInput" placeholder="Enter move (e.g. e4)">
+            <input type="text" id="moveInput" placeholder="Type move (e.g. e4)">
             <button class="btn-move" onclick="handleInputMove()">Move</button>
         </div>
 
@@ -143,6 +160,8 @@
 <script>
     var board = null;
     var game = new Chess();
+    var redoStack = []; // To store moves for the "Next" button
+
     var $status = $('#status');
     var $history = $('#moveHistory');
     var $input = $('#moveInput');
@@ -151,7 +170,24 @@
         return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
     }
 
-    // Function to handle typed moves
+    function undoMove() {
+        var move = game.undo();
+        if (move) {
+            redoStack.push(move);
+            board.position(game.fen());
+            updateStatus();
+        }
+    }
+
+    function redoMove() {
+        var move = redoStack.pop();
+        if (move) {
+            game.move(move);
+            board.position(game.fen());
+            updateStatus();
+        }
+    }
+
     function handleInputMove() {
         var moveStr = $input.val();
         var move = game.move(moveStr);
@@ -162,12 +198,12 @@
             return;
         }
 
+        redoStack = []; // Clear redo stack on new move
         board.position(game.fen());
         $input.val('');
         updateStatus();
     }
 
-    // Allow pressing "Enter" key to submit move
     $input.on('keypress', function(e) {
         if (e.which === 13) handleInputMove();
     });
@@ -183,6 +219,8 @@
     function onDrop (source, target) {
         var move = game.move({ from: source, to: target, promotion: 'q' });
         if (move === null) return 'snapback';
+        
+        redoStack = []; // Clear redo stack on new move
         updateStatus();
     }
 
@@ -204,6 +242,10 @@
         }
 
         $status.html(status);
+
+        // Update Navigation buttons
+        $('#prevBtn').prop('disabled', game.history().length === 0);
+        $('#nextBtn').prop('disabled', redoStack.length === 0);
 
         var history = game.history();
         var historyHtml = '';
