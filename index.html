@@ -220,18 +220,35 @@
     }
 
     function handleInputMove() {
-        var moveStr = $input.val();
-        var move = game.move(moveStr);
-        if (move === null) {
-            alert("Invalid move: " + moveStr);
-            $input.val('');
-            return;
+    var moveStr = $input.val().trim(); // Remove accidental spaces
+    
+    // CASE-INSENSITIVITY LOGIC:
+    // If the first character is a piece letter (n, b, r, q, k), capitalize it.
+    // Pawn moves (e4) and special moves (O-O) are handled accordingly.
+    if (moveStr.length > 1) {
+        // Check if the move starts with a piece letter that should be uppercase
+        const pieces = ['n', 'b', 'r', 'q', 'k'];
+        if (pieces.includes(moveStr[0].toLowerCase())) {
+            moveStr = moveStr[0].toUpperCase() + moveStr.slice(1);
         }
-        redoStack = []; 
-        board.position(game.fen());
-        $input.val('');
-        updateStatus();
+        // Handle castling typed as lowercase 'o-o'
+        if (moveStr.toLowerCase() === 'o-o') moveStr = 'O-O';
+        if (moveStr.toLowerCase() === 'o-o-o') moveStr = 'O-O-O';
     }
+
+    var move = game.move(moveStr);
+
+    if (move === null) {
+        alert("Invalid move: " + moveStr);
+        $input.val('');
+        return;
+    }
+
+    redoStack = []; 
+    board.position(game.fen());
+    $input.val('');
+    updateStatus();
+}
 
     $input.on('keypress', function(e) { if (e.which === 13) handleInputMove(); });
 
