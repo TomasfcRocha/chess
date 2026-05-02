@@ -3,166 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess - Flip, Drag, and Jump</title>
+    <title>Chess - Engine Evaluation</title>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+            background-color: #2c3e50; color: #ecf0f1;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;
         }
-
         .game-container {
-            display: flex;
-            gap: 30px;
-            background-color: #34495e;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            max-width: 900px;
-            width: 95%;
-            flex-wrap: wrap;
+            display: flex; gap: 20px; background-color: #34495e;
+            padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 1000px; width: 95%; flex-wrap: wrap;
         }
-
-        .board-section {
-            flex: 1;
-            min-width: 320px;
+        /* Evaluation Bar Styling */
+        .eval-container {
+            width: 30px; height: 400px; background-color: #000;
+            border-radius: 4px; overflow: hidden; display: flex; flex-direction: column-reverse;
+            border: 2px solid #2c3e50; position: relative;
         }
-
-        #myBoard {
-            width: 100%;
-            max-width: 400px;
-            border: 4px solid #2c3e50;
-            border-radius: 4px;
+        #eval-fill {
+            width: 100%; height: 50%; background-color: #fff;
+            transition: height 0.5s ease-in-out;
         }
-
-        .info-section {
-            width: 250px;
-            display: flex;
-            flex-direction: column;
+        #eval-text {
+            position: absolute; width: 100%; text-align: center;
+            bottom: 5px; font-size: 10px; color: #e67e22; font-weight: bold;
         }
-
-        .nav-buttons {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .nav-buttons button {
-            flex: 1;
-            background: #3498db;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-
-        .action-buttons button {
-            flex: 1;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border-radius: 4px;
-            border: none;
-            outline: none;
-        }
-
+        .board-section { flex: 1; min-width: 320px; }
+        #myBoard { width: 100%; max-width: 400px; border: 4px solid #2c3e50; border-radius: 4px; }
+        .info-section { width: 250px; display: flex; flex-direction: column; }
         .status-box {
-            background-color: #2c3e50;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: bold;
+            background-color: #2c3e50; padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; text-align: center; font-weight: bold;
             border-left: 5px solid #f1c40f;
         }
-
         .history-box {
-            background-color: #2c3e50;
-            padding: 15px;
-            border-radius: 8px;
-            flex-grow: 1;
-            height: 200px;
-            display: flex;
-            flex-direction: column;
+            background-color: #2c3e50; padding: 15px; border-radius: 8px;
+            flex-grow: 1; height: 180px; display: flex; flex-direction: column;
         }
-
-        #moveHistory {
-            overflow-y: auto;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-        }
-
-        .move-row {
-            padding: 4px 5px;
-            border-bottom: 1px solid #34495e;
-            display: flex;
-            cursor: pointer;
-        }
-
+        #moveHistory { overflow-y: auto; font-family: monospace; font-size: 14px; }
+        .move-row { padding: 4px 5px; border-bottom: 1px solid #34495e; display: flex; cursor: pointer; }
         .move-row:hover { background: #465c71; }
         .move-number { color: #95a5a6; width: 30px; }
-        .white-move, .black-move { width: 80px; padding: 0 5px; border-radius: 3px; }
-        .white-move:hover, .black-move:hover { background: #f1c40f; color: #2c3e50; }
-
+        .white-move, .black-move { width: 80px; }
         button {
-            padding: 10px; 
-            cursor: pointer; 
-            background: #e67e22; 
-            border: none; 
-            color: white; 
-            border-radius: 4px; 
-            font-weight: bold;
+            padding: 10px; cursor: pointer; background: #e67e22; 
+            border: none; color: white; border-radius: 4px; font-weight: bold;
         }
-        button:hover { background: #d35400; }
-        button:disabled { background: #7f8c8d; cursor: not-allowed; }
         .btn-move { background: #27ae60; }
-        .btn-flip { background: #9b59b6; }
-        .btn-flip:hover { background: #8e44ad; }
+        .btn-flip { background: #9b59b6; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="game-container">
+    <!-- Eval Bar -->
+    <div class="eval-container">
+        <div id="eval-fill"></div>
+        <div id="eval-text">0.0</div>
+    </div>
+
     <div class="board-section">
-        <h2 style="margin-top:0; color:#f1c40f;">JS Chess</h2>
+        <h2 style="margin:0 0 10px 0; color:#f1c40f;">JS Chess + Stockfish</h2>
         <div id="myBoard"></div>
     </div>
 
     <div class="info-section">
         <div class="status-box" id="status">White to move</div>
         
-        <div class="nav-buttons">
-            <button id="prevBtn" onclick="undoMove()">◀ Back</button>
-            <button id="nextBtn" onclick="redoMove()">Next ▶</button>
-        </div>
+        <button class="btn-flip" onclick="board.orientation('flip')">🔄 Flip Board</button>
 
-        <div class="action-buttons">
-            <button class="btn-flip" onclick="flipBoard()">🔄 Flip Board</button>
-        </div>
-
-        <div class="input-group">
-            <input type="text" id="moveInput" placeholder="Type move (e.g. e4)">
+        <div style="display:flex; gap:5px; margin-bottom:15px;">
+            <input type="text" id="moveInput" placeholder="Type move..." style="flex:1; padding:10px; border-radius:4px; border:none;">
             <button class="btn-move" onclick="handleInputMove()">Move</button>
         </div>
 
         <div class="history-box">
-            <h3 style="margin-top:0; font-size:0.9rem;">History (Click to jump)</h3>
             <div id="moveHistory"></div>
         </div>
         
@@ -177,138 +95,79 @@
 <script>
     var board = null;
     var game = new Chess();
-    var redoStack = []; 
+    var stockfish = new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
 
-    var $status = $('#status');
-    var $history = $('#moveHistory');
-    var $input = $('#moveInput');
-
-    function getPieceUrl(piece) {
-        return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
-    }
-
-    function flipBoard() {
-        board.orientation('flip'); // Core Chessboard.js flip function
-    }
-
-    function jumpToMove(index) {
-        var history = game.history();
-        var targetCount = index + 1;
-        if (targetCount < history.length) {
-            while (game.history().length > targetCount) undoMove();
-        } else {
-            while (game.history().length < targetCount && redoStack.length > 0) redoMove();
+    // 1. Engine Communication
+    stockfish.onmessage = function(event) {
+        var line = event.data;
+        if (line.includes('score cp')) {
+            var score = parseInt(line.split('score cp ')[1].split(' ')[0]);
+            updateEvalBar(score);
+        } else if (line.includes('score mate')) {
+            var mate = line.split('score mate ')[1].split(' ')[0];
+            updateEvalBar(mate === '0' ? 0 : (mate > 0 ? 1000 : -1000), true);
         }
+    };
+
+    function updateEvalBar(cp, isMate = false) {
+        var evalText = isMate ? 'M' + Math.abs(cp/1000) : (cp / 100).toFixed(1);
+        document.getElementById('eval-text').innerText = evalText;
+        
+        // Convert centipawns to percentage (capped at +/- 500cp)
+        var percentage = 50 + (cp / 20); 
+        if (percentage > 100) percentage = 100;
+        if (percentage < 0) percentage = 0;
+        document.getElementById('eval-fill').style.height = percentage + '%';
     }
 
-    function undoMove() {
-        var move = game.undo();
-        if (move) {
-            redoStack.push(move);
-            board.position(game.fen());
-            updateStatus();
-        }
+    function requestEval() {
+        stockfish.postMessage('position fen ' + game.fen());
+        stockfish.postMessage('go depth 12'); // Shallow depth for instant browser response
     }
 
-    function redoMove() {
-        var move = redoStack.pop();
-        if (move) {
-            game.move(move);
-            board.position(game.fen());
-            updateStatus();
-        }
-    }
-
+    // 2. Game Logic
     function handleInputMove() {
-    var moveStr = $input.val().trim(); // Remove accidental spaces
-    
-    // CASE-INSENSITIVITY LOGIC:
-    // If the first character is a piece letter (n, b, r, q, k), capitalize it.
-    // Pawn moves (e4) and special moves (O-O) are handled accordingly.
-    if (moveStr.length > 1) {
-        // Check if the move starts with a piece letter that should be uppercase
-        const pieces = ['n', 'b', 'r', 'q', 'k'];
-        if (pieces.includes(moveStr[0].toLowerCase())) {
-            moveStr = moveStr[0].toUpperCase() + moveStr.slice(1);
+        var val = $('#moveInput').val();
+        if (game.move(val, {sloppy: true})) {
+            board.position(game.fen());
+            $('#moveInput').val('');
+            updateStatus();
+        } else {
+            alert("Invalid move");
         }
-        // Handle castling typed as lowercase 'o-o'
-        if (moveStr.toLowerCase() === 'o-o') moveStr = 'O-O';
-        if (moveStr.toLowerCase() === 'o-o-o') moveStr = 'O-O-O';
     }
 
-    var move = game.move(moveStr);
-
-    if (move === null) {
-        alert("Invalid move: " + moveStr);
-        $input.val('');
-        return;
-    }
-
-    redoStack = []; 
-    board.position(game.fen());
-    $input.val('');
-    updateStatus();
-}
-
-    $input.on('keypress', function(e) { if (e.which === 13) handleInputMove(); });
-
-    function onDragStart (source, piece) {
-        if (game.game_over()) return false;
-        if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-            (game.turn() === 'b' && piece.search(/^w/) !== -1)) return false;
-    }
-
-    function onDrop (source, target) {
+    function onDrop(source, target) {
         var move = game.move({ from: source, to: target, promotion: 'q' });
         if (move === null) return 'snapback';
-        redoStack = []; 
         updateStatus();
     }
 
-    function onSnapEnd () { board.position(game.fen()); }
-
-    function updateStatus () {
-        var status = '';
-        var moveColor = (game.turn() === 'w') ? 'White' : 'Black';
-
-        if (game.in_checkmate()) status = 'Game over, ' + moveColor + ' is in checkmate.';
-        else if (game.in_draw()) status = 'Game over, draw';
-        else {
-            status = moveColor + ' to move';
-            if (game.in_check()) status += ', ' + moveColor + ' is in check';
+    function updateStatus() {
+        var status = game.turn() === 'w' ? 'White to move' : 'Black to move';
+        if (game.in_checkmate()) status = 'Checkmate!';
+        $('#status').html(status);
+        
+        // Update history
+        var history = game.history();
+        var html = '';
+        for (var i = 0; i < history.length; i += 2) {
+            html += `<div class="move-row">${Math.floor(i/2)+1}. ${history[i]} ${history[i+1] || ''}</div>`;
         }
-
-        $status.html(status);
-        $('#prevBtn').prop('disabled', game.history().length === 0);
-        $('#nextBtn').prop('disabled', redoStack.length === 0);
-
-        var currentHistory = game.history();
-        var fullHistory = currentHistory.concat([...redoStack].reverse());
-        var historyHtml = '';
-        for (var i = 0; i < fullHistory.length; i += 2) {
-            var moveNum = Math.floor(i / 2) + 1;
-            var whiteActive = i < currentHistory.length ? 'active' : '';
-            var blackActive = (i + 1) < currentHistory.length ? 'active' : '';
-            
-            historyHtml += '<div class="move-row">' +
-                           '<span class="move-number">' + moveNum + '.</span>' +
-                           '<span class="white-move ' + whiteActive + '" onclick="jumpToMove(' + i + ')">' + fullHistory[i] + '</span>' +
-                           (fullHistory[i+1] ? '<span class="black-move ' + blackActive + '" onclick="jumpToMove(' + (i + 1) + ')">' + fullHistory[i+1] + '</span>' : '') +
-                           '</div>';
-        }
-        $history.html(historyHtml);
+        $('#moveHistory').html(html);
+        requestEval(); // Ask Stockfish what it thinks
     }
 
     var config = {
         draggable: true,
         position: 'start',
-        pieceTheme: getPieceUrl,
-        onDragStart: onDragStart,
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
         onDrop: onDrop,
-        onSnapEnd: onSnapEnd
+        onSnapEnd: function() { board.position(game.fen()) }
     };
     board = Chessboard('myBoard', config);
-    updateStatus();
+    requestEval();
 </script>
 </body>
 </html>
+            
