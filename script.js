@@ -1,35 +1,39 @@
-.container {
-    display: flex;
-    gap: 40px;
-    margin-top: 20px;
-}
+function updateStatus() {
+    var status = '';
+    var moveColor = (game.turn() === 'w') ? 'White' : 'Black';
 
-.history-container {
-    width: 200px;
-    background: #34495e;
-    padding: 15px;
-    border-radius: 8px;
-    height: 400px;
-    display: flex;
-    flex-direction: column;
-}
+    // 1. Check game state
+    if (game.in_checkmate()) {
+        status = 'Game over, ' + moveColor + ' is in checkmate.';
+    } else if (game.in_draw()) {
+        status = 'Game over, Draw';
+    } else {
+        status = moveColor + ' to move';
+        if (game.in_check()) status += ', ' + moveColor + ' is in check';
+    }
 
-.history-list {
-    overflow-y: auto;
-    flex-grow: 1;
-    font-family: monospace;
-    font-size: 14px;
-    line-height: 1.6;
-}
+    // 2. Update status text
+    document.getElementById('status').innerHTML = status;
 
-.move-row {
-    border-bottom: 1px solid #2c3e50;
-    padding: 2px 0;
-}
+    // 3. Update Move History
+    var history = game.history();
+    var historyElement = document.getElementById('moveHistory');
+    historyElement.innerHTML = ''; // Clear previous list
 
-.move-number {
-    color: #95a5a6;
-    margin-right: 10px;
+    // Loop through history and group moves by pairs (White/Black)
+    for (var i = 0; i < history.length; i += 2) {
+        var moveNum = Math.floor(i / 2) + 1;
+        var whiteMove = history[i];
+        var blackMove = history[i + 1] ? history[i + 1] : '';
+        
+        var row = document.createElement('div');
+        row.className = 'move-row';
+        row.innerHTML = `<span class="move-number">${moveNum}.</span> ${whiteMove} ${blackMove}`;
+        historyElement.appendChild(row);
+    }
+    
+    // Auto-scroll to bottom of history
+    historyElement.scrollTop = historyElement.scrollHeight;
 }
 // 1. Initialize the game logic (referee)
 var game = new Chess();
