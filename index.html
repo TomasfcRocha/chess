@@ -2,19 +2,6 @@
     var board = null;
     var game = new Chess();
 
-    // Function to handle clicking a move in the history
-    function goToMove(moveIndex) {
-        const history = game.history();
-        const movesToUndo = history.length - 1 - moveIndex;
-
-        for (let i = 0; i < movesToUndo; i++) {
-            game.undo();
-        }
-        
-        board.position(game.fen());
-        updateStatus();
-    }
-
     function makeMove() {
         const input = $('#moveInput');
         const move = game.move(input.val().trim());
@@ -27,6 +14,17 @@
         }
     }
 
+    // New function to jump to a specific move in the history
+    function goToMove(moveIndex) {
+        const history = game.history();
+        game.reset();
+        for (let i = 0; i <= moveIndex; i++) {
+            game.move(history[i]);
+        }
+        board.position(game.fen());
+        updateStatus();
+    }
+
     $('#moveInput').on('keydown', (e) => { if (e.key === 'Enter') makeMove(); });
     $('#moveBtn').on('click', makeMove);
 
@@ -37,29 +35,20 @@
     }
 
     function updateStatus() {
-        // Update Turn Status
-        const status = game.turn() === 'w' ? 'White to move' : 'Black to move';
-        if (game.in_checkmate()) {
-            $('#status').text('Game Over: Checkmate');
-        } else if (game.in_draw()) {
-            $('#status').text('Game Over: Draw');
-        } else {
-            $('#status').text(status);
-        }
-
-        // Update Clickable History
+        $('#status').text(game.turn() === 'w' ? 'White to move' : 'Black to move');
+        
         let hist = game.history();
         let html = '';
         
         for (let i = 0; i < hist.length; i += 2) {
             const moveNum = Math.floor(i / 2) + 1;
             
-            // White's move
-            const whiteMove = `<span class="history-move" onclick="goToMove(${i})">${hist[i]}</span>`;
+            // White's move span
+            const whiteMove = `<span class="clickable-move" onclick="goToMove(${i})">${hist[i]}</span>`;
             
-            // Black's move (check if it exists)
+            // Black's move span (if it exists)
             const blackMove = hist[i + 1] 
-                ? `<span class="history-move" onclick="goToMove(${i + 1})">${hist[i + 1]}</span>` 
+                ? `<span class="clickable-move" onclick="goToMove(${i + 1})">${hist[i + 1]}</span>` 
                 : '';
 
             html += `<div>${moveNum}. ${whiteMove} ${blackMove}</div>`;
