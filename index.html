@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess - Full Navigation</title>
-    <!-- Chessboard.js CSS -->
+    <title>Chess - Clickable History</title>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
         body {
@@ -100,13 +99,28 @@
         }
 
         .move-row {
-            padding: 4px 0;
+            padding: 4px 5px;
             border-bottom: 1px solid #34495e;
             display: flex;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .move-row:hover {
+            background: #465c71;
         }
 
         .move-number { color: #95a5a6; width: 30px; }
-        .white-move, .black-move { width: 80px; }
+        .white-move, .black-move { 
+            width: 80px; 
+            padding: 0 5px;
+            border-radius: 3px;
+        }
+        
+        .white-move:hover, .black-move:hover {
+            background: #f1c40f;
+            color: #2c3e50;
+        }
 
         button {
             padding: 10px; 
@@ -120,7 +134,6 @@
         button:hover { background: #d35400; }
         button:disabled { background: #7f8c8d; cursor: not-allowed; }
         .btn-move { background: #27ae60; }
-        .btn-move:hover { background: #2ecc71; }
     </style>
 </head>
 <body>
@@ -145,7 +158,7 @@
         </div>
 
         <div class="history-box">
-            <h3 style="margin-top:0; font-size:1rem;">Move History</h3>
+            <h3 style="margin-top:0; font-size:1rem;">Move History (Click to jump)</h3>
             <div id="moveHistory"></div>
         </div>
         
@@ -160,7 +173,7 @@
 <script>
     var board = null;
     var game = new Chess();
-    var redoStack = []; // To store moves for the "Next" button
+    var redoStack = []; 
 
     var $status = $('#status');
     var $history = $('#moveHistory');
@@ -168,6 +181,25 @@
 
     function getPieceUrl(piece) {
         return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
+    }
+
+    // Jump to a specific point in the history
+    function jumpToMove(index) {
+        var history = game.history();
+        var targetCount = index + 1;
+        var currentCount = history.length;
+
+        if (targetCount < currentCount) {
+            // Need to go back
+            while (game.history().length > targetCount) {
+                undoMove();
+            }
+        } else if (targetCount > currentCount) {
+            // Need to go forward
+            while (game.history().length < targetCount && redoStack.length > 0) {
+                redoMove();
+            }
+        }
     }
 
     function undoMove() {
@@ -198,7 +230,7 @@
             return;
         }
 
-        redoStack = []; // Clear redo stack on new move
+        redoStack = []; 
         board.position(game.fen());
         $input.val('');
         updateStatus();
@@ -219,8 +251,7 @@
     function onDrop (source, target) {
         var move = game.move({ from: source, to: target, promotion: 'q' });
         if (move === null) return 'snapback';
-        
-        redoStack = []; // Clear redo stack on new move
+        redoStack = []; 
         updateStatus();
     }
 
@@ -242,23 +273,28 @@
         }
 
         $status.html(status);
-
-        // Update Navigation buttons
         $('#prevBtn').prop('disabled', game.history().length === 0);
         $('#nextBtn').prop('disabled', redoStack.length === 0);
 
-        var history = game.history();
+        // Combined history (current + redoable future)
+        var currentHistory = game.history();
+        var fullHistory = currentHistory.concat([...redoStack].reverse());
+        
         var historyHtml = '';
-        for (var i = 0; i < history.length; i += 2) {
+        for (var i = 0; i < fullHistory.length; i += 2) {
             var moveNum = Math.floor(i / 2) + 1;
+            
+            // Highlight the moves if they are "active" (already played)
+            var whiteClass = i < currentHistory.length ? 'white-move active' : 'white-move';
+            var blackClass = (i + 1) < currentHistory.length ? 'black-move active' : 'black-move';
+            
             historyHtml += '<div class="move-row">' +
                            '<span class="move-number">' + moveNum + '.</span>' +
-                           '<span class="white-move">' + history[i] + '</span>' +
-                           '<span class="black-move">' + (history[i + 1] || '') + '</span>' +
+                           '<span class="' + whiteClass + '" onclick="jumpToMove(' + i + ')">' + fullHistory[i] + '</span>' +
+                           (fullHistory[i+1] ? '<span class="' + blackClass + '" onclick="jumpToMove(' + (i + 1) + ')">' + fullHistory[i+1] + '</span>' : '') +
                            '</div>';
         }
         $history.html(historyHtml);
-        $history.scrollTop($history[0].scrollHeight);
     }
 
     var config = {
