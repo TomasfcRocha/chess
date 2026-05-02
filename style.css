@@ -1,4 +1,41 @@
-body {
+function updateStatus() {
+    var status = '';
+    var moveColor = (game.turn() === 'w') ? 'White' : 'Black';
+
+    // 1. Check game state
+    if (game.in_checkmate()) {
+        status = 'Game over, ' + moveColor + ' is in checkmate.';
+    } else if (game.in_draw()) {
+        status = 'Game over, Draw';
+    } else {
+        status = moveColor + ' to move';
+        if (game.in_check()) status += ', ' + moveColor + ' is in check';
+    }
+
+    // 2. Update status text
+    document.getElementById('status').innerHTML = status;
+
+    // 3. Update Move History
+    var history = game.history();
+    var historyElement = document.getElementById('moveHistory');
+    historyElement.innerHTML = ''; // Clear previous list
+
+    // Loop through history and group moves by pairs (White/Black)
+    for (var i = 0; i < history.length; i += 2) {
+        var moveNum = Math.floor(i / 2) + 1;
+        var whiteMove = history[i];
+        var blackMove = history[i + 1] ? history[i + 1] : '';
+        
+        var row = document.createElement('div');
+        row.className = 'move-row';
+        row.innerHTML = `<span class="move-number">${moveNum}.</span> ${whiteMove} ${blackMove}`;
+        historyElement.appendChild(row);
+    }
+    
+    // Auto-scroll to bottom of history
+    historyElement.scrollTop = historyElement.scrollHeight;
+}
+    body {
     display: flex;
     flex-direction: column;
     align-items: center;
