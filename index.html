@@ -127,24 +127,18 @@
 
     // 2. Game Logic
   function handleInputMove() {
-    var moveStr = $input.val().trim();
-    
-    if (moveStr.length >= 2) {
-        const pieceLetters = ['n', 'b', 'r', 'q', 'k'];
-        const firstChar = moveStr[0].toLowerCase();
-        const secondChar = moveStr[1];
-
-        // Only capitalize if it's a piece letter AND the next character isn't a number
-        // This distinguishes 'b5' (pawn) from 'bb5' (bishop to b5)
-        if (pieceLetters.includes(firstChar) && isNaN(parseInt(secondChar))) {
-            moveStr = firstChar.toUpperCase() + moveStr.slice(1);
+        var moveStr = $input.val();
+        var move = game.move(moveStr);
+        if (move === null) {
+            alert("Invalid move: " + moveStr);
+            $input.val('');
+            return;
         }
-        
-        // Handle castling
-        if (moveStr.toLowerCase() === 'o-o') moveStr = 'O-O';
-        if (moveStr.toLowerCase() === 'o-o-o') moveStr = 'O-O-O';
+        redoStack = []; 
+        board.position(game.fen());
+        $input.val('');
+        updateStatus();
     }
-
     var move = game.move(moveStr);
 
     if (move === null) {
