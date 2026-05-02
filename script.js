@@ -1,6 +1,22 @@
 var board = null
 var game = new Chess()
 var $status = $('#status')
+// Add this function to point to the online images
+function pieceTheme (piece) {
+  // This pulls the standard Wikipedia-style pieces from a CDN
+  return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
+}
+
+var config = {
+  draggable: true,
+  position: 'start',
+  onDragStart: onDragStart,
+  onDrop: onDrop,
+  onSnapEnd: onSnapEnd,
+  pieceTheme: pieceTheme // <--- Add this line!
+}
+
+board = Chessboard('myBoard', config)
 
 function onDragStart (source, piece, position, orientation) {
   // Do not pick up pieces if the game is over
