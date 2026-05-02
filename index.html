@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess - Drag or Click History</title>
+    <title>Chess - Play vs Bot</title>
     <!-- Chessboard.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
@@ -97,7 +97,6 @@
 
         .move-number { color: #95a5a6; width: 30px; }
         
-        /* Interactive move styling[cite: 1] */
         .white-move, .black-move { 
             width: 80px; 
             cursor: pointer; 
@@ -129,7 +128,7 @@
 
 <div class="game-container">
     <div class="board-section">
-        <h2 style="margin-top:0; color:#f1c40f;">JS Chess</h2>
+        <h2 style="margin-top:0; color:#f1c40f;">JS Chess vs Bot</h2>
         <div id="myBoard"></div>
     </div>
 
@@ -142,7 +141,7 @@
         </div>
 
         <div class="history-box">
-            <h3 style="margin-top:0; font-size:1rem;">Move History (Click to Jump)</h3>
+            <h3 style="margin-top:0; font-size:1rem;">Move History</h3>
             <div id="moveHistory"></div>
         </div>
         
@@ -165,6 +164,21 @@
         return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
     }
 
+    // --- BOT LOGIC ---
+    function makeBotMove() {
+        var possibleMoves = game.moves();
+
+        // Game over
+        if (possibleMoves.length === 0) return;
+
+        // Pick a random move
+        var randomIdx = Math.floor(Math.random() * possibleMoves.length);
+        game.move(possibleMoves[randomIdx]);
+        
+        board.position(game.fen());
+        updateStatus();
+    }
+
     function handleInputMove() {
         var moveStr = $input.val();
         var move = game.move(moveStr);
@@ -178,6 +192,11 @@
         board.position(game.fen());
         $input.val('');
         updateStatus();
+
+        // Trigger bot after manual input
+        if (!game.game_over() && game.turn() === 'b') {
+            window.setTimeout(makeBotMove, 250);
+        }
     }
 
     $input.on('keypress', function(e) {
@@ -185,24 +204,36 @@
     });
 
     function onDragStart (source, piece, position, orientation) {
+        // Do not pick up pieces if the game is over
         if (game.game_over()) return false;
-        if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-            (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+
+        // Only pick up pieces for White (the player)
+        if (game.turn() === 'b' || piece.search(/^b/) !== -1) {
             return false;
         }
     }
 
     function onDrop (source, target) {
-        var move = game.move({ from: source, to: target, promotion: 'q' });
+        var move = game.move({
+            from: source,
+            to: target,
+            promotion: 'q' // always promote to queen for simplicity
+        });
+
         if (move === null) return 'snapback';
+
         updateStatus();
+
+        // Check if it's the bot's turn
+        if (!game.game_over() && game.turn() === 'b') {
+            window.setTimeout(makeBotMove, 250);
+        }
     }
 
     function onSnapEnd () {
         board.position(game.fen());
     }
 
-    // NEW: Jump to a specific move in history[cite: 1]
     function goToMove(moveIndex) {
         var history = game.history();
         game.reset();
@@ -232,8 +263,6 @@
         var historyHtml = '';
         for (var i = 0; i < history.length; i += 2) {
             var moveNum = Math.floor(i / 2) + 1;
-            
-            // Generate clickable spans for history jumping[cite: 1]
             var whiteMove = '<span class="white-move" onclick="goToMove(' + i + ')">' + history[i] + '</span>';
             var blackMove = '';
             if (history[i + 1]) {
