@@ -1,69 +1,18 @@
 <script>
     var board = null;
     var game = new Chess();
-    var stockfish = null;
 
-    async function initStockfish() {
-        try {
-            const response = await fetch('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
-            const script = await response.text();
-            const blob = new Blob([script], { type: 'application/javascript' });
-            stockfish = new Worker(URL.createObjectURL(blob));
+    // Function to handle clicking a move in the history
+    function goToMove(moveIndex) {
+        const history = game.history();
+        const movesToUndo = history.length - 1 - moveIndex;
 
-            stockfish.onmessage = function(e) {
-                const line = e.data;
-                
-                // Only parse lines that contain the actual score
-                if (line.includes('depth') && line.includes('score')) {
-                    if (line.includes('score cp')) {
-                        // Extract centipawns specifically
-                        let parts = line.split(' ');
-                        let scoreIndex = parts.indexOf('cp') + 1;
-                        let score = parseInt(parts[scoreIndex]);
-                        
-                        // Stockfish gives score from the side-to-move's perspective.
-                        // We normalize it: positive = White winning, negative = Black winning.
-                        if (game.turn() === 'b') score = -score;
-                        updateEval(score);
-                    } else if (line.includes('score mate')) {
-                        let parts = line.split(' ');
-                        let mateIndex = parts.indexOf('mate') + 1;
-                        let mateIn = parseInt(parts[mateIndex]);
-                        updateEval(mateIn > 0 ? 1000 : -1000, true);
-                    }
-                }
-            };
-
-            stockfish.postMessage('uci');
-            stockfish.postMessage('ucinewgame');
-            stockfish.postMessage('isready');
-            requestEval();
-        } catch (err) { console.log("Engine Load Error:", err); }
-    }
-
-    function updateEval(cp, isMate = false) {
-        const evalDisplay = document.getElementById('eval-text');
-        const fill = document.getElementById('eval-fill');
+        for (let i = 0; i < movesToUndo; i++) {
+            game.undo();
+        }
         
-        // Display the score (e.g., +1.2 or -0.5)
-        let displayScore = (cp / 100).toFixed(1);
-        evalDisplay.innerText = isMate ? 'M' : (cp > 0 ? '+' + displayScore : displayScore);
-        
-        // Map the score to the bar (capped at +/- 5.0 for visual clarity)
-        let pct = 50 + (cp / 20); 
-        pct = Math.min(Math.max(pct, 2), 98); 
-        fill.style.height = pct + '%';
-        
-        // Change text color for readability against white/black bar
-        evalDisplay.style.color = pct > 50 ? '#000' : '#fff';
-    }
-
-    function requestEval() {
-        if (!stockfish) return;
-        // Ensure the engine stops previous calculations before starting new ones
-        stockfish.postMessage('stop');
-        stockfish.postMessage('position fen ' + game.fen());
-        stockfish.postMessage('go depth 13');
+        board.position(game.fen());
+        updateStatus();
     }
 
     function makeMove() {
@@ -88,14 +37,35 @@
     }
 
     function updateStatus() {
-        $('#status').text(game.turn() === 'w' ? 'White to move' : 'Black to move');
+        // Update Turn Status
+        const status = game.turn() === 'w' ? 'White to move' : 'Black to move';
+        if (game.in_checkmate()) {
+            $('#status').text('Game Over: Checkmate');
+        } else if (game.in_draw()) {
+            $('#status').text('Game Over: Draw');
+        } else {
+            $('#status').text(status);
+        }
+
+        // Update Clickable History
         let hist = game.history();
         let html = '';
+        
         for (let i = 0; i < hist.length; i += 2) {
-            html += `<div>${Math.floor(i/2)+1}. ${hist[i]} ${hist[i+1] || ''}</div>`;
+            const moveNum = Math.floor(i / 2) + 1;
+            
+            // White's move
+            const whiteMove = `<span class="history-move" onclick="goToMove(${i})">${hist[i]}</span>`;
+            
+            // Black's move (check if it exists)
+            const blackMove = hist[i + 1] 
+                ? `<span class="history-move" onclick="goToMove(${i + 1})">${hist[i + 1]}</span>` 
+                : '';
+
+            html += `<div>${moveNum}. ${whiteMove} ${blackMove}</div>`;
         }
+        
         $('#moveHistory').html(html);
-        requestEval();
     }
 
     board = Chessboard('myBoard', {
@@ -106,5 +76,5 @@
         onSnapEnd: () => board.position(game.fen())
     });
 
-    initStockfish();
+    updateStatus();
 </script>
