@@ -95,63 +95,77 @@
 <script>
     var board = null;
     var game = new Chess();
+    
+    // Using a more reliable worker source for Stockfish
     var stockfish = new Worker('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js');
 
-    // 1. Engine Communication
+    // Initialize the engine
+    stockfish.postMessage('uci');
+    stockfish.postMessage('ucinewgame');
+
     stockfish.onmessage = function(event) {
         var line = event.data;
+        
+        // Look for the evaluation score in the engine's output
         if (line.includes('score cp')) {
-            var score = parseInt(line.split('score cp ')[1].split(' ')[0]);
-            updateEvalBar(score);
+            var parts = line.split(' ');
+            var cpIndex = parts.indexOf('cp');
+            if (cpIndex !== -1) {
+                var score = parseInt(parts[cpIndex + 1]);
+                // Flip score if it's Black's turn to keep the bar perspective correct
+                if (game.turn() === 'b') score = -score;
+                updateEvalBar(score);
+            }
         } else if (line.includes('score mate')) {
-            var mate = line.split('score mate ')[1].split(' ')[0];
-            updateEvalBar(mate === '0' ? 0 : (mate > 0 ? 1000 : -1000), true);
+            var parts = line.split(' ');
+            var mateIndex = parts.indexOf('mate');
+            var mateScore = parseInt(parts[mateIndex + 1]);
+            updateEvalBar(mateScore > 0 ? 1000 : -1000, true);
         }
     };
 
     function updateEvalBar(cp, isMate = false) {
-        var evalText = isMate ? 'M' + Math.abs(cp/1000) : (cp / 100).toFixed(1);
+        var evalText = isMate ? 'M' : (cp / 100).toFixed(1);
         document.getElementById('eval-text').innerText = evalText;
         
-        // Convert centipawns to percentage (capped at +/- 500cp)
+        // Math to move the bar: 50% is equal, +500cp is 100% white, -500cp is 0% white
         var percentage = 50 + (cp / 20); 
         if (percentage > 100) percentage = 100;
         if (percentage < 0) percentage = 0;
+        
         document.getElementById('eval-fill').style.height = percentage + '%';
     }
 
     function requestEval() {
+        // Tell Stockfish the current board state and ask it to think
         stockfish.postMessage('position fen ' + game.fen());
-        stockfish.postMessage('go depth 12'); // Shallow depth for instant browser response
+        stockfish.postMessage('go depth 12');
     }
 
-    // 2. Game Logic
-  function handleInputMove() {
-        var moveStr = $input.val();
+    function handleInputMove() {
+        var moveStr = $('#moveInput').val().trim();
+        
+        // Smart Casing Logic
+        if (moveStr.length >= 2) {
+            const pieceLetters = ['n', 'b', 'r', 'q', 'k'];
+            const firstChar = moveStr[0].toLowerCase();
+            const secondChar = moveStr[1];
+            if (pieceLetters.includes(firstChar) && isNaN(parseInt(secondChar))) {
+                moveStr = firstChar.toUpperCase() + moveStr.slice(1);
+            }
+            if (moveStr.toLowerCase() === 'o-o') moveStr = 'O-O';
+            if (moveStr.toLowerCase() === 'o-o-o') moveStr = 'O-O-O';
+        }
+
         var move = game.move(moveStr);
         if (move === null) {
             alert("Invalid move: " + moveStr);
-            $input.val('');
-            return;
+        } else {
+            board.position(game.fen());
+            updateStatus();
         }
-        redoStack = []; 
-        board.position(game.fen());
-        $input.val('');
-        updateStatus();
+        $('#moveInput').val('');
     }
-    var move = game.move(moveStr);
-
-    if (move === null) {
-        alert("Invalid move: " + moveStr);
-        $input.val('');
-        return;
-    }
-
-    redoStack = []; 
-    board.position(game.fen());
-    $input.val('');
-    updateStatus();
-}
 
     function onDrop(source, target) {
         var move = game.move({ from: source, to: target, promotion: 'q' });
@@ -162,16 +176,18 @@
     function updateStatus() {
         var status = game.turn() === 'w' ? 'White to move' : 'Black to move';
         if (game.in_checkmate()) status = 'Checkmate!';
+        if (game.in_draw()) status = 'Draw';
+        
         $('#status').html(status);
         
-        // Update history
         var history = game.history();
         var html = '';
         for (var i = 0; i < history.length; i += 2) {
             html += `<div class="move-row">${Math.floor(i/2)+1}. ${history[i]} ${history[i+1] || ''}</div>`;
         }
         $('#moveHistory').html(html);
-        requestEval(); // Ask Stockfish what it thinks
+        
+        requestEval(); 
     }
 
     var config = {
@@ -182,6 +198,8 @@
         onSnapEnd: function() { board.position(game.fen()) }
     };
     board = Chessboard('myBoard', config);
+    
+    // Initial Eval
     requestEval();
 </script>
 </body>
