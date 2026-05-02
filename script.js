@@ -1,3 +1,36 @@
+.container {
+    display: flex;
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.history-container {
+    width: 200px;
+    background: #34495e;
+    padding: 15px;
+    border-radius: 8px;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.history-list {
+    overflow-y: auto;
+    flex-grow: 1;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.move-row {
+    border-bottom: 1px solid #2c3e50;
+    padding: 2px 0;
+}
+
+.move-number {
+    color: #95a5a6;
+    margin-right: 10px;
+}
 // 1. Initialize the game logic (referee)
 var game = new Chess();
 
