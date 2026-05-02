@@ -1,69 +1,43 @@
 <script>
-    var board = null;
-    var game = new Chess();
+    var board = null;  
+    var game = new Chess();  
 
-    function makeMove() {
-        const input = $('#moveInput');
-        const move = game.move(input.val().trim());
-        if (move) {
-            board.position(game.fen());
-            updateStatus();
-            input.val('');
-        } else {
-            alert("Strict Notation: e4, Nf3, Bb5, O-O");
-        }
-    }
+    function makeMove() {  
+        const input = $('#moveInput');  
+        const move = game.move(input.val().trim());  
+        if (move) {  
+            board.position(game.fen());  
+            updateStatus();  
+            input.val('');  
+        } else {  
+            alert("Strict Notation: e4, Nf3, Bb5, O-O");  
+        }  
+    }  
 
-    // New function to jump to a specific move in the history
-    function goToMove(moveIndex) {
-        const history = game.history();
-        game.reset();
-        for (let i = 0; i <= moveIndex; i++) {
-            game.move(history[i]);
-        }
-        board.position(game.fen());
-        updateStatus();
-    }
+    $('#moveInput').on('keydown', (e) => { if (e.key === 'Enter') makeMove(); });  
+    $('#moveBtn').on('click', makeMove);  
 
-    $('#moveInput').on('keydown', (e) => { if (e.key === 'Enter') makeMove(); });
-    $('#moveBtn').on('click', makeMove);
+    function onDrop(source, target) {  
+        const move = game.move({ from: source, to: target, promotion: 'q' });  
+        if (move === null) return 'snapback';  
+        updateStatus();  
+    }  
 
-    function onDrop(source, target) {
-        const move = game.move({ from: source, to: target, promotion: 'q' });
-        if (move === null) return 'snapback';
-        updateStatus();
-    }
+    function updateStatus() {  
+        $('#status').text(game.turn() === 'w' ? 'White to move' : 'Black to move');  
+        let hist = game.history();  
+        let html = '';  
+        for (let i = 0; i < hist.length; i += 2) {  
+            html += `<div>${Math.floor(i/2)+1}. ${hist[i]} ${hist[i+1] || ''}</div>`;  
+        }  
+        $('#moveHistory').html(html);  
+    }  
 
-    function updateStatus() {
-        $('#status').text(game.turn() === 'w' ? 'White to move' : 'Black to move');
-        
-        let hist = game.history();
-        let html = '';
-        
-        for (let i = 0; i < hist.length; i += 2) {
-            const moveNum = Math.floor(i / 2) + 1;
-            
-            // White's move span
-            const whiteMove = `<span class="clickable-move" onclick="goToMove(${i})">${hist[i]}</span>`;
-            
-            // Black's move span (if it exists)
-            const blackMove = hist[i + 1] 
-                ? `<span class="clickable-move" onclick="goToMove(${i + 1})">${hist[i + 1]}</span>` 
-                : '';
-
-            html += `<div>${moveNum}. ${whiteMove} ${blackMove}</div>`;
-        }
-        
-        $('#moveHistory').html(html);
-    }
-
-    board = Chessboard('myBoard', {
-        draggable: true,
-        position: 'start',
-        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
-        onDrop: onDrop,
-        onSnapEnd: () => board.position(game.fen())
-    });
-
-    updateStatus();
+    board = Chessboard('myBoard', {  
+        draggable: true,  
+        position: 'start',  
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',  
+        onDrop: onDrop,  
+        onSnapEnd: () => board.position(game.fen())  
+    });  
 </script>
